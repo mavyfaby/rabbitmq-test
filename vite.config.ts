@@ -23,6 +23,7 @@ export default defineConfig({
       { find: '@views', replacement: path.resolve(__dirname, './src/views') },
       { find: '@scss', replacement: path.resolve(__dirname, './src/scss') },
       { find: '@composables', replacement: path.resolve(__dirname, './src/composables') },
+      { find: '@utils', replacement: path.resolve(__dirname, './src/utils') },
     ]
   },
 })

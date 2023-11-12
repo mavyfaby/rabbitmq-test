@@ -25,7 +25,8 @@
       "@assets/*": ["./src/assets/*"],
       "@views/*": ["./src/views/*"],
       "@scss/*": ["./src/scss/*"],
-      "@composables/*": ["./src/composables/*"]
+      "@composables/*": ["./src/composables/*"],
+      "@utils/*": ["./src/utils/*"]
     }
   },
   "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"],

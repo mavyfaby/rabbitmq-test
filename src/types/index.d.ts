@@ -1,9 +1,8 @@
 declare global {
 
   type ChatMessage = {
-    id: string;
-    username: string;
     text: string;
+    username: string;
     createdAt: Date;
   };
 

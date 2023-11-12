@@ -2,8 +2,8 @@
   <div class="flex items-center justify-center h-screen">
     <div class="space-y-5 w-[300px]">
       <h3 class="title-large">Create Account</h3>
-      <md-filled-text-field class="w-full" @input="username = $event.target.value" label="Your Username" />
-      <md-filled-text-field class="w-full" @input="topic = $event.target.value" label="Select a Topic" />
+      <md-filled-text-field class="w-full" @keydown.enter="next" v-model="username" label="Your Username" />
+      <md-filled-text-field class="w-full" @keydown.enter="next" v-model="topic" label="Select a Topic" />
       <md-filled-button class="w-full" :disabled="topic.length === 0 || username.length === 0" @click="next">Create</md-filled-button>
     </div>
   </div>

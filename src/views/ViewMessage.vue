@@ -6,7 +6,7 @@
     </div>
 
     <div class="flex flex-col w-full h-full relative" v-else>
-      <div class="py-5">Topic: {{ route.params.topic }}</div>
+      <div class="py-5">Room - <strong>{{ route.params.topic }}</strong></div>
 
 
       <div class="flex-grow" v-if="messages.length === 0">
@@ -14,12 +14,17 @@
       </div>
 
       <div v-else class="flex flex-col justify-end gap-2 p-2 overflow-y-scroll w-full flex-grow">
-        <ComposableMessage v-for="message in messages" :key="message.id" :is-me="message.username === 'me'" :message="message" />
+        <ComposableMessage
+          v-for="(message, i) in messages"
+          :key="i"
+          :is-me="message.username === client.getUsername()"
+          :message="message"
+        />
       </div>
 
       <div class="flex items-center py-5">
-        <md-filled-text-field placeholder="Send a message" v-model.trim="message" @keydown.enter="send" class="w-full" />
-        <md-filled-button class="ml-2" @click="send" :disabled="message.length === 0">
+        <md-filled-text-field placeholder="Send a message" v-model.trim="input" @keydown.enter="send" class="w-full" />
+        <md-filled-button class="ml-2" @click="send" :disabled="input.length === 0">
           {{ isConnected ? "Send" : "Reconnect" }}
         </md-filled-button>
       </div>
@@ -35,6 +40,7 @@ import "@material/web/progress/circular-progress"
 import "@material/web/textfield/filled-text-field"
 import "@material/web/button/filled-button"
 
+import MQTT from "@utils/mqtt";
 import Paho from "paho-mqtt";
 import ComposableMessage from "@composables/ComposableMessage.vue";
 
@@ -42,78 +48,77 @@ const route = useRoute();
 const isLoading = ref(true);
 const isConnected = ref(false);
 const messages = ref([] as ChatMessage[]);
-const message = ref("");
-let username = "";
+const input = ref("");
 
-let client: Paho.Client;
+const topic = route.params.topic as string;
+let client: MQTT;
 
 onMounted(() => {
-  // Get username from localstorage
-  username = localStorage.getItem("username") || "anonymous";
   // Initialize client
-  client = new Paho.Client("localhost", 15675, "/ws", username);
+  client = new MQTT({
+    host: "localhost",
+    port: 15675,
+    username: localStorage.getItem("username") || "anonymous"
+  });
 
-  // Set callbacks for connection lost
-  client.onConnectionLost = (error: Paho.MQTTError) => {
+  // Add connection lost listener
+  client.onConnectionLost((error: Paho.MQTTError) => {
     console.log("Connection lost", error);
     isConnected.value = false;
-  }; 
+  });
 
-  // Set callbacks for message arrived
-  client.onMessageArrived = (message: Paho.Message) => {
-    console.log("Message arrived", message);
-
-    // Get username from clientId
-    const [_, user] = message.destinationName.split("/");
-
-    // If the message is not from me, add it to the messages array
-    if (user !== username) {
-      messages.value.push({
-        id: message.destinationName,
-        username: user,
-        text: message.payloadString,
-        createdAt: new Date(),
-      });
-    }
-  };
-
-  // Set callbacks for message delivered
-  client.onMessageDelivered = (_: Paho.Message) => {
+  // Add message delivered listener
+  client.onMessageDelivered((message: Paho.Message) => {
     console.log("Message Sent!");
-  };
+    
+    // Add message to list
+    messages.value.push({
+      username: client.getUsername(),
+      text: message.payloadString,
+      createdAt: new Date(),
+    });
 
-  // Connect to the topic
-  connect(route.params.topic as string);
+    // Clear input
+    input.value = "";
+  });
+
+  // Add message arrived listener
+  client.onMessageArrived((username: string, message: Paho.Message) => {
+    messages.value.push({
+      text: message.payloadString,
+      username: username,
+      createdAt: new Date(),
+    });
+  });
+
+  // Connect to server
+  connect();  
 });
 
 /**
- * Connects to a topic nameserver 
- * @param topic name of the topic to connect to
+ * Connects to the RabbitMQ server
  */
-function connect(topic: string) {
-  console.info("Connecting...");
+function connect() {
+  client.connect((error?: Paho.MQTTError) => {
+    isLoading.value = false;
 
-  // Connect to RabbitMQ Web MQTT server
-  client.connect({
-    onSuccess: () => {
-      console.log("Connected");
-      isLoading.value = false;
-      isConnected.value = true;
-
-      // Subscribe to the topic with the username as the clientId (topic/username)
-      client.subscribe(`${topic}/#`, {
-        onSuccess: () => {
-          console.log(`Subscribed to ${topic}!`);
-        },
-        onFailure: (error: Paho.MQTTError) => {
-          console.log("Subscription failed", error);
-        },
-      });
-    },
-    onFailure: (error: Paho.MQTTError) => {
+    if (error) {
       console.log("Connection failed", error);
-      isLoading.value = false;
-    },
+      return;
+    }
+    
+    console.log("Connected to RabbitMQ server!");
+
+    // Subscribe to topic
+    client.subscribe(topic, {
+      onSuccess() {
+        console.log(`Subscribed to topic [${route.params.topic}]`);
+        isConnected.value = true;
+      },
+      onFailure(error: Paho.MQTTError) {
+        console.log("Failed to subscribe to topic", error);
+      }
+    });
   });
 }
 
@@ -122,30 +127,22 @@ function connect(topic: string) {
  */
 function send() {
   // If the client is not initialized or not connected
-  if (!client || !client.isConnected()) {
-    // connect to the topic
-    if (client) {
-      connect(route.params.topic as string);
-      return;
-    }
-
-    // If the client is not initialized, alert the user
-    alert("Client not initialized!");
+  if (!client) {
+    alert("Client not initialized! Please refresh the page!");
     return;
   }
 
-  // Send the message to the topic
-  client.send(`${route.params.topic}/${username}`, message.value);
-
-  // Add the message to the messages array
-  messages.value.push({
-    id: "9",
-    username: "me",
-    text: message.value,
-    createdAt: new Date(),
-  });
-
-  message.value = "";
+  try {
+    // Try Send message
+    client.send(topic, input.value);
+  } catch (error) {
+    // If error, log it
+    console.log("Error sending message", error);
+    // Reconnect to server
+    console.log("Reconnecting...");
+    // Connect to server
+    connect();
+  }
 }
 </script>
 
