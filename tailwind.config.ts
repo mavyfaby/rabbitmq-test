@@ -7,6 +7,9 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'sans': ['Inter', 'Roboto', 'sans-serif'],
+      },
       colors: {
         "primary": "var(--md-sys-color-primary)",
         "primary-text": "var(--md-sys-color-primary)",

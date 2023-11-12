@@ -3,8 +3,8 @@
 </script>
 
 <template>
-  <div class="container mx-auto px-4">
-    <router-view />
+  <div>
+    Page Not Found
   </div>
 </template>
 

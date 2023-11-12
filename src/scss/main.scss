@@ -3,3 +3,21 @@
 @tailwind utilities;
 
 @import url("theme/theme.scss");
+
+html {
+  @apply text-on-surface;
+}
+
+*::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+*::-webkit-scrollbar-track {
+  @apply bg-surface;
+}
+
+*::-webkit-scrollbar-thumb {
+  @apply bg-surface-container-highest;
+  border-radius: 20px;
+}
